@@ -23,8 +23,6 @@ vendor/
     └── Languages/
 ```
 
-详见 [`vendor/README.md`](./vendor/README.md)
-
 ### 选项二：系统安装
 
 需要在 Windows 系统上安装 [Innosetup](https://jrsoftware.org/isinfo.php)。
@@ -185,19 +183,19 @@ const config: MakerInnosetupConfig = {
 
 #### 方法 1: 直接使用 ISS 文件
 
-``javascript
+```javascript
 {
-name: '@electron-forge/maker-innosetup',
-config: {
-scriptPath: './installer.iss'
-}
+  name: '@electron-forge/maker-innosetup',
+  config: {
+    scriptPath: './installer.iss'
+  }
 }
 
 ```
 
 #### 方法 2: 解析 ISS 文件为配置
 
-``typescript
+```typescript
 import { MakerInnosetup } from "@electron-forge/maker-innosetup";
 
 // 从 ISS 文件解析配置
@@ -212,16 +210,16 @@ const forgeConfig: ForgeConfig = {
   makers: [
     {
       name: "@electron-forge/maker-innosetup",
-      config: config,  // 使用解析后的配置
+      config: config, // 使用解析后的配置
       platforms: ["win32"],
     },
   ],
 };
 ```
 
-> 📝 **详细文档**: 查看 [ISS_PARSER.md](./ISS_PARSER.md) 了解 ISS 解析器的完整使用方法
+> 📝 **详细文档**: 查看 [iss-parser.md](./docs/iss-parser.md) 了解 ISS 解析器的完整使用方法
 
-> ⚠️ **重要**: 如果你的 ISS 脚本中定义了 `OutputDir`，Maker 会自动解析并在正确的目录中查找安装包。详见 [CUSTOM_SCRIPT_OUTPUT.md](./CUSTOM_SCRIPT_OUTPUT.md)
+> ⚠️ **重要**: 如果你的 ISS 脚本中定义了 `OutputDir`，Maker 会自动解析并在正确的目录中查找安装包。详见 [custom-script-output.md](./docs/custom-script-output.md)
 
 ## 配置选项
 
@@ -272,32 +270,31 @@ const forgeConfig: ForgeConfig = {
 
 ### 添加自定义 Pascal 代码
 
-``typescript
+```typescript
 config: {
   config: {
     Code: `
-function InitializeSetup(): Boolean;
-begin
-Result := True;
-// 自定义初始化逻辑
-end;
+    function InitializeSetup(): Boolean;
+      begin
+        Result := True;
+        // 自定义初始化逻辑
+      end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-if CurStep = ssPostInstall then
-begin
-// 安装后的自定义操作
-end;
-end;
+      procedure CurStepChanged(CurStep: TSetupStep);
+      begin
+        if CurStep = ssPostInstall then
+      begin
+      // 安装后的自定义操作
+      end;
+    end;
 `;
+  }
 }
-}
-
 ```
 
 ### 注册表操作
 
-``typescript
+```typescript
 config: {
   config: {
     Registry: [
@@ -316,26 +313,25 @@ config: {
 
 ### 多语言支持
 
-``typescript
+```typescript
 config: {
-config: {
-Languages: [
-{
-Name: "english",
-MessagesFile: "compiler:Default.isl",
-},
-{
-Name: "chinesesimplified",
-MessagesFile: "compiler:Languages\\ChineseSimplified.isl",
-},
-{
-Name: "japanese",
-MessagesFile: "compiler:Languages\\Japanese.isl",
-},
-];
+  config: {
+    Languages: [
+      {
+        Name: "english",
+        MessagesFile: "compiler:Default.isl",
+      },
+      {
+        Name: "chinesesimplified",
+        MessagesFile: "compiler:Languages\\ChineseSimplified.isl",
+      },
+      {
+        Name: "japanese",
+        MessagesFile: "compiler:Languages\\Japanese.isl",
+      },
+    ];
+  }
 }
-}
-
 ```
 
 ## 环境变量
@@ -362,4 +358,3 @@ MIT
 - [Electron Forge](https://www.electronforge.io/)
 - [Innosetup 官方文档](https://jrsoftware.org/ishelp/)
 - [Innosetup 下载](https://jrsoftware.org/isdl.php)
-```

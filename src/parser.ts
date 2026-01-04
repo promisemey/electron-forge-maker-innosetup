@@ -1,0 +1,493 @@
+import * as fs from "fs";
+import { InnoSetupConfig } from "./types";
+
+/**
+ * Inno Setup 脚本解析器
+ * 将 .iss 文件解析为 InnoSetupConfig 对象
+ */
+export class InnoScriptParser {
+  /**
+   * 从文件路径解析 ISS 脚本
+   */
+  static parseFile(issFilePath: string): InnoSetupConfig {
+    const content = fs.readFileSync(issFilePath, "utf-8");
+    return this.parse(content);
+  }
+
+  /**
+   * 解析 ISS 脚本内容
+   */
+  static parse(content: string): InnoSetupConfig {
+    const config: InnoSetupConfig = {};
+    const lines = content.split(/\r?\n/);
+    let currentSection: string | null = null;
+    let codeSection = "";
+    let inCodeSection = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i].trim();
+
+      // 跳过空行和注释
+      if (!line || line.startsWith(";") || line.startsWith("//")) {
+        continue;
+      }
+
+      // 检测段落
+      const sectionMatch = line.match(/^\[(\w+)\]$/);
+      if (sectionMatch) {
+        currentSection = sectionMatch[1];
+        
+        // 处理 Code 段落
+        if (currentSection === "Code") {
+          inCodeSection = true;
+          codeSection = "";
+        } else {
+          inCodeSection = false;
+        }
+        continue;
+      }
+
+      // 如果在 Code 段落中，收集所有代码
+      if (inCodeSection) {
+        codeSection += lines[i] + "\n";
+        continue;
+      }
+
+      // 解析不同段落
+      if (currentSection === "Setup") {
+        this.parseSetupLine(line, config);
+      } else if (currentSection === "Languages") {
+        this.parseLanguagesLine(line, config);
+      } else if (currentSection === "Tasks") {
+        this.parseTasksLine(line, config);
+      } else if (currentSection === "Types") {
+        this.parseTypesLine(line, config);
+      } else if (currentSection === "Components") {
+        this.parseComponentsLine(line, config);
+      } else if (currentSection === "Files") {
+        this.parseFilesLine(line, config);
+      } else if (currentSection === "Dirs") {
+        this.parseDirsLine(line, config);
+      } else if (currentSection === "Icons") {
+        this.parseIconsLine(line, config);
+      } else if (currentSection === "INI") {
+        this.parseINILine(line, config);
+      } else if (currentSection === "InstallDelete") {
+        this.parseInstallDeleteLine(line, config);
+      } else if (currentSection === "UninstallDelete") {
+        this.parseUninstallDeleteLine(line, config);
+      } else if (currentSection === "Registry") {
+        this.parseRegistryLine(line, config);
+      } else if (currentSection === "Run") {
+        this.parseRunLine(line, config);
+      } else if (currentSection === "UninstallRun") {
+        this.parseUninstallRunLine(line, config);
+      } else if (currentSection === "Messages") {
+        this.parseMessagesLine(line, config);
+      } else if (currentSection === "CustomMessages") {
+        this.parseCustomMessagesLine(line, config);
+      }
+    }
+
+    // 添加 Code 段落
+    if (codeSection.trim()) {
+      config.Code = codeSection.trim();
+    }
+
+    return config;
+  }
+
+  /**
+   * 解析 Setup 段落的一行
+   */
+  private static parseSetupLine(line: string, config: InnoSetupConfig): void {
+    const match = line.match(/^(\w+)\s*=\s*(.+)$/);
+    if (!match) return;
+
+    const [, key, value] = match;
+    
+    if (!config.Setup) {
+      config.Setup = {};
+    }
+
+    // 移除引号
+    let parsedValue: any = value.trim();
+    if (parsedValue.startsWith('"') && parsedValue.endsWith('"')) {
+      parsedValue = parsedValue.slice(1, -1);
+    }
+
+    // 转换布尔值
+    if (parsedValue === "yes" || parsedValue === "true") {
+      parsedValue = true;
+    } else if (parsedValue === "no" || parsedValue === "false") {
+      parsedValue = false;
+    }
+
+    // 转换数字
+    if (/^\d+$/.test(parsedValue)) {
+      parsedValue = parseInt(parsedValue, 10);
+    }
+
+    config.Setup[key] = parsedValue;
+  }
+
+  /**
+   * 解析参数行（用于 Languages, Files, Icons 等段落）
+   */
+  private static parseParams(line: string): Record<string, string> {
+    const params: Record<string, string> = {};
+    const parts = line.split(";").map(p => p.trim());
+
+    for (const part of parts) {
+      const match = part.match(/^(\w+):\s*(.+)$/);
+      if (match) {
+        const [, key, value] = match;
+        // 移除引号
+        let parsedValue = value.trim();
+        if (parsedValue.startsWith('"') && parsedValue.endsWith('"')) {
+          parsedValue = parsedValue.slice(1, -1);
+        }
+        params[key] = parsedValue;
+      }
+    }
+
+    return params;
+  }
+
+  /**
+   * 解析 Languages 段落
+   */
+  private static parseLanguagesLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Languages) {
+      config.Languages = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Name && params.MessagesFile) {
+      config.Languages.push({
+        Name: params.Name,
+        MessagesFile: params.MessagesFile,
+        LicenseFile: params.LicenseFile,
+        InfoBeforeFile: params.InfoBeforeFile,
+        InfoAfterFile: params.InfoAfterFile,
+      });
+    }
+  }
+
+  /**
+   * 解析 Tasks 段落
+   */
+  private static parseTasksLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Tasks) {
+      config.Tasks = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Name && params.Description) {
+      config.Tasks.push({
+        Name: params.Name,
+        Description: params.Description,
+        GroupDescription: params.GroupDescription,
+        Flags: params.Flags,
+        Components: params.Components,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 Types 段落
+   */
+  private static parseTypesLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Types) {
+      config.Types = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Name && params.Description) {
+      config.Types.push({
+        Name: params.Name,
+        Description: params.Description,
+        Flags: params.Flags,
+      });
+    }
+  }
+
+  /**
+   * 解析 Components 段落
+   */
+  private static parseComponentsLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Components) {
+      config.Components = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Name && params.Description) {
+      config.Components.push({
+        Name: params.Name,
+        Description: params.Description,
+        Types: params.Types,
+        Flags: params.Flags,
+        ExtraDiskSpaceRequired: params.ExtraDiskSpaceRequired ? parseInt(params.ExtraDiskSpaceRequired) : undefined,
+      });
+    }
+  }
+
+  /**
+   * 解析 Files 段落
+   */
+  private static parseFilesLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Files) {
+      config.Files = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Source && params.DestDir) {
+      config.Files.push({
+        Source: params.Source,
+        DestDir: params.DestDir,
+        DestName: params.DestName,
+        Flags: params.Flags,
+        Permissions: params.Permissions,
+        StrongAssemblyName: params.StrongAssemblyName,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Languages: params.Languages,
+        Check: params.Check,
+        BeforeInstall: params.BeforeInstall,
+        AfterInstall: params.AfterInstall,
+        Attribs: params.Attribs,
+        FontInstall: params.FontInstall,
+      });
+    }
+  }
+
+  /**
+   * 解析 Dirs 段落
+   */
+  private static parseDirsLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Dirs) {
+      config.Dirs = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Name) {
+      config.Dirs.push({
+        Name: params.Name,
+        Permissions: params.Permissions,
+        Attribs: params.Attribs,
+        Flags: params.Flags,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 Icons 段落
+   */
+  private static parseIconsLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Icons) {
+      config.Icons = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Name && params.Filename) {
+      config.Icons.push({
+        Name: params.Name,
+        Filename: params.Filename,
+        Parameters: params.Parameters,
+        WorkingDir: params.WorkingDir,
+        HotKey: params.HotKey,
+        Comment: params.Comment,
+        IconFilename: params.IconFilename,
+        IconIndex: params.IconIndex ? parseInt(params.IconIndex) : undefined,
+        AppUserModelID: params.AppUserModelID,
+        Flags: params.Flags,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Languages: params.Languages,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 INI 段落
+   */
+  private static parseINILine(line: string, config: InnoSetupConfig): void {
+    if (!config.INI) {
+      config.INI = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Filename && params.Section) {
+      config.INI.push({
+        Filename: params.Filename,
+        Section: params.Section,
+        Key: params.Key,
+        String: params.String,
+        Flags: params.Flags,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 InstallDelete 段落
+   */
+  private static parseInstallDeleteLine(line: string, config: InnoSetupConfig): void {
+    if (!config.InstallDelete) {
+      config.InstallDelete = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Type && params.Name) {
+      config.InstallDelete.push({
+        Type: params.Type as any,
+        Name: params.Name,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 UninstallDelete 段落
+   */
+  private static parseUninstallDeleteLine(line: string, config: InnoSetupConfig): void {
+    if (!config.UninstallDelete) {
+      config.UninstallDelete = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Type && params.Name) {
+      config.UninstallDelete.push({
+        Type: params.Type as any,
+        Name: params.Name,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 Registry 段落
+   */
+  private static parseRegistryLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Registry) {
+      config.Registry = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Root && params.Subkey) {
+      let valueData: string | number | undefined = params.ValueData;
+      // 尝试转换为数字
+      if (valueData && /^\d+$/.test(valueData)) {
+        valueData = parseInt(valueData, 10);
+      }
+
+      config.Registry.push({
+        Root: params.Root as any,
+        Subkey: params.Subkey,
+        ValueType: params.ValueType as any,
+        ValueName: params.ValueName,
+        ValueData: valueData,
+        Permissions: params.Permissions,
+        Flags: params.Flags,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 Run 段落
+   */
+  private static parseRunLine(line: string, config: InnoSetupConfig): void {
+    if (!config.Run) {
+      config.Run = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Filename) {
+      config.Run.push({
+        Filename: params.Filename,
+        Parameters: params.Parameters,
+        WorkingDir: params.WorkingDir,
+        StatusMsg: params.StatusMsg,
+        Description: params.Description,
+        Flags: params.Flags,
+        RunOnceId: params.RunOnceId,
+        Verb: params.Verb,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Languages: params.Languages,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 UninstallRun 段落
+   */
+  private static parseUninstallRunLine(line: string, config: InnoSetupConfig): void {
+    if (!config.UninstallRun) {
+      config.UninstallRun = [];
+    }
+
+    const params = this.parseParams(line);
+    if (params.Filename) {
+      config.UninstallRun.push({
+        Filename: params.Filename,
+        Parameters: params.Parameters,
+        WorkingDir: params.WorkingDir,
+        StatusMsg: params.StatusMsg,
+        Description: params.Description,
+        Flags: params.Flags,
+        RunOnceId: params.RunOnceId,
+        Components: params.Components,
+        Tasks: params.Tasks,
+        Check: params.Check,
+      });
+    }
+  }
+
+  /**
+   * 解析 Messages 段落
+   */
+  private static parseMessagesLine(line: string, config: InnoSetupConfig): void {
+    const match = line.match(/^(\w+)\s*=\s*(.+)$/);
+    if (!match) return;
+
+    const [, key, value] = match;
+    
+    if (!config.Messages) {
+      config.Messages = {};
+    }
+
+    config.Messages[key] = value;
+  }
+
+  /**
+   * 解析 CustomMessages 段落
+   */
+  private static parseCustomMessagesLine(line: string, config: InnoSetupConfig): void {
+    const match = line.match(/^(\w+)\s*=\s*(.+)$/);
+    if (!match) return;
+
+    const [, key, value] = match;
+    
+    if (!config.CustomMessages) {
+      config.CustomMessages = {};
+    }
+
+    config.CustomMessages[key] = value;
+  }
+}

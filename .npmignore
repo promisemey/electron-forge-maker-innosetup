@@ -1,0 +1,12 @@
+node_modules/
+src/
+tsconfig.json
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.tsbuildinfo
+coverage/
+.nyc_output/
+*.ts
+!*.d.ts

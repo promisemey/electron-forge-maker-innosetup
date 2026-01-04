@@ -1,0 +1,502 @@
+import * as path from "path";
+import * as fs from "fs";
+import { InnoSetupConfig } from "./types";
+
+/**
+ * 生成 Innosetup 脚本文件内容
+ */
+export class InnoScriptGenerator {
+  /**
+   * 生成脚本内容
+   */
+  generate(config: InnoSetupConfig): string {
+    const sections: string[] = [];
+
+    // 生成 [Setup] 部分
+    if (config.Setup) {
+      sections.push(this.generateSetupSection(config.Setup));
+    }
+
+    // 生成 [Languages] 部分
+    if (config.Languages && config.Languages.length > 0) {
+      sections.push(this.generateLanguagesSection(config.Languages));
+    }
+
+    // 生成 [Types] 部分
+    if (config.Types && config.Types.length > 0) {
+      sections.push(this.generateTypesSection(config.Types));
+    }
+
+    // 生成 [Components] 部分
+    if (config.Components && config.Components.length > 0) {
+      sections.push(this.generateComponentsSection(config.Components));
+    }
+
+    // 生成 [Tasks] 部分
+    if (config.Tasks && config.Tasks.length > 0) {
+      sections.push(this.generateTasksSection(config.Tasks));
+    }
+
+    // 生成 [Files] 部分
+    if (config.Files && config.Files.length > 0) {
+      sections.push(this.generateFilesSection(config.Files));
+    }
+
+    // 生成 [Dirs] 部分
+    if (config.Dirs && config.Dirs.length > 0) {
+      sections.push(this.generateDirsSection(config.Dirs));
+    }
+
+    // 生成 [Icons] 部分
+    if (config.Icons && config.Icons.length > 0) {
+      sections.push(this.generateIconsSection(config.Icons));
+    }
+
+    // 生成 [INI] 部分
+    if (config.INI && config.INI.length > 0) {
+      sections.push(this.generateINISection(config.INI));
+    }
+
+    // 生成 [InstallDelete] 部分
+    if (config.InstallDelete && config.InstallDelete.length > 0) {
+      sections.push(this.generateInstallDeleteSection(config.InstallDelete));
+    }
+
+    // 生成 [UninstallDelete] 部分
+    if (config.UninstallDelete && config.UninstallDelete.length > 0) {
+      sections.push(
+        this.generateUninstallDeleteSection(config.UninstallDelete)
+      );
+    }
+
+    // 生成 [Registry] 部分
+    if (config.Registry && config.Registry.length > 0) {
+      sections.push(this.generateRegistrySection(config.Registry));
+    }
+
+    // 生成 [Run] 部分
+    if (config.Run && config.Run.length > 0) {
+      sections.push(this.generateRunSection(config.Run));
+    }
+
+    // 生成 [UninstallRun] 部分
+    if (config.UninstallRun && config.UninstallRun.length > 0) {
+      sections.push(this.generateUninstallRunSection(config.UninstallRun));
+    }
+
+    // 生成 [Messages] 部分
+    if (config.Messages && Object.keys(config.Messages).length > 0) {
+      sections.push(this.generateMessagesSection(config.Messages));
+    }
+
+    // 生成 [CustomMessages] 部分
+    if (
+      config.CustomMessages &&
+      Object.keys(config.CustomMessages).length > 0
+    ) {
+      sections.push(this.generateCustomMessagesSection(config.CustomMessages));
+    }
+
+    // 生成 [Code] 部分
+    if (config.Code) {
+      sections.push(this.generateCodeSection(config.Code));
+    }
+
+    return sections.join("\n\n");
+  }
+
+  /**
+   * 生成 Setup 部分
+   */
+  private generateSetupSection(
+    setup: NonNullable<InnoSetupConfig["Setup"]>
+  ): string {
+    const lines = ["[Setup]"];
+
+    for (const [key, value] of Object.entries(setup)) {
+      if (value !== undefined && value !== null) {
+        if (typeof value === "boolean") {
+          lines.push(`${key}=${value ? "yes" : "no"}`);
+        } else if (typeof value === "number") {
+          lines.push(`${key}=${value}`);
+        } else {
+          lines.push(`${key}=${value}`);
+        }
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Languages 部分
+   */
+  private generateLanguagesSection(
+    languages: NonNullable<InnoSetupConfig["Languages"]>
+  ): string {
+    const lines = ["[Languages]"];
+
+    for (const lang of languages) {
+      const parts = [`Name: "${lang.Name}"`];
+      parts.push(`MessagesFile: "${lang.MessagesFile}"`);
+
+      if (lang.LicenseFile) parts.push(`LicenseFile: "${lang.LicenseFile}"`);
+      if (lang.InfoBeforeFile)
+        parts.push(`InfoBeforeFile: "${lang.InfoBeforeFile}"`);
+      if (lang.InfoAfterFile)
+        parts.push(`InfoAfterFile: "${lang.InfoAfterFile}"`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Types 部分
+   */
+  private generateTypesSection(
+    types: NonNullable<InnoSetupConfig["Types"]>
+  ): string {
+    const lines = ["[Types]"];
+
+    for (const type of types) {
+      const parts = [`Name: "${type.Name}"`];
+      parts.push(`Description: "${type.Description}"`);
+      if (type.Flags) parts.push(`Flags: ${type.Flags}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Components 部分
+   */
+  private generateComponentsSection(
+    components: NonNullable<InnoSetupConfig["Components"]>
+  ): string {
+    const lines = ["[Components]"];
+
+    for (const comp of components) {
+      const parts = [`Name: "${comp.Name}"`];
+      parts.push(`Description: "${comp.Description}"`);
+      if (comp.Types) parts.push(`Types: ${comp.Types}`);
+      if (comp.Flags) parts.push(`Flags: ${comp.Flags}`);
+      if (comp.ExtraDiskSpaceRequired)
+        parts.push(`ExtraDiskSpaceRequired: ${comp.ExtraDiskSpaceRequired}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Tasks 部分
+   */
+  private generateTasksSection(
+    tasks: NonNullable<InnoSetupConfig["Tasks"]>
+  ): string {
+    const lines = ["[Tasks]"];
+
+    for (const task of tasks) {
+      const parts = [`Name: "${task.Name}"`];
+      parts.push(`Description: "${task.Description}"`);
+      if (task.GroupDescription)
+        parts.push(`GroupDescription: "${task.GroupDescription}"`);
+      if (task.Flags) parts.push(`Flags: ${task.Flags}`);
+      if (task.Components) parts.push(`Components: ${task.Components}`);
+      if (task.Check) parts.push(`Check: ${task.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Files 部分
+   */
+  private generateFilesSection(
+    files: NonNullable<InnoSetupConfig["Files"]>
+  ): string {
+    const lines = ["[Files]"];
+
+    for (const file of files) {
+      const parts = [`Source: "${file.Source}"`];
+      parts.push(`DestDir: "${file.DestDir}"`);
+      if (file.DestName) parts.push(`DestName: "${file.DestName}"`);
+      if (file.Flags) parts.push(`Flags: ${file.Flags}`);
+      if (file.Permissions) parts.push(`Permissions: ${file.Permissions}`);
+      if (file.Components) parts.push(`Components: ${file.Components}`);
+      if (file.Tasks) parts.push(`Tasks: ${file.Tasks}`);
+      if (file.Languages) parts.push(`Languages: ${file.Languages}`);
+      if (file.Check) parts.push(`Check: ${file.Check}`);
+      if (file.BeforeInstall)
+        parts.push(`BeforeInstall: ${file.BeforeInstall}`);
+      if (file.AfterInstall) parts.push(`AfterInstall: ${file.AfterInstall}`);
+      if (file.Attribs) parts.push(`Attribs: ${file.Attribs}`);
+      if (file.FontInstall) parts.push(`FontInstall: "${file.FontInstall}"`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Dirs 部分
+   */
+  private generateDirsSection(
+    dirs: NonNullable<InnoSetupConfig["Dirs"]>
+  ): string {
+    const lines = ["[Dirs]"];
+
+    for (const dir of dirs) {
+      const parts = [`Name: "${dir.Name}"`];
+      if (dir.Permissions) parts.push(`Permissions: ${dir.Permissions}`);
+      if (dir.Attribs) parts.push(`Attribs: ${dir.Attribs}`);
+      if (dir.Flags) parts.push(`Flags: ${dir.Flags}`);
+      if (dir.Components) parts.push(`Components: ${dir.Components}`);
+      if (dir.Tasks) parts.push(`Tasks: ${dir.Tasks}`);
+      if (dir.Check) parts.push(`Check: ${dir.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Icons 部分
+   */
+  private generateIconsSection(
+    icons: NonNullable<InnoSetupConfig["Icons"]>
+  ): string {
+    const lines = ["[Icons]"];
+
+    for (const icon of icons) {
+      const parts = [`Name: "${icon.Name}"`];
+      parts.push(`Filename: "${icon.Filename}"`);
+      if (icon.Parameters) parts.push(`Parameters: "${icon.Parameters}"`);
+      if (icon.WorkingDir) parts.push(`WorkingDir: "${icon.WorkingDir}"`);
+      if (icon.HotKey) parts.push(`HotKey: "${icon.HotKey}"`);
+      if (icon.Comment) parts.push(`Comment: "${icon.Comment}"`);
+      if (icon.IconFilename) parts.push(`IconFilename: "${icon.IconFilename}"`);
+      if (icon.IconIndex !== undefined)
+        parts.push(`IconIndex: ${icon.IconIndex}`);
+      if (icon.AppUserModelID)
+        parts.push(`AppUserModelID: "${icon.AppUserModelID}"`);
+      if (icon.Flags) parts.push(`Flags: ${icon.Flags}`);
+      if (icon.Components) parts.push(`Components: ${icon.Components}`);
+      if (icon.Tasks) parts.push(`Tasks: ${icon.Tasks}`);
+      if (icon.Languages) parts.push(`Languages: ${icon.Languages}`);
+      if (icon.Check) parts.push(`Check: ${icon.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 INI 部分
+   */
+  private generateINISection(ini: NonNullable<InnoSetupConfig["INI"]>): string {
+    const lines = ["[INI]"];
+
+    for (const item of ini) {
+      const parts = [`Filename: "${item.Filename}"`];
+      parts.push(`Section: "${item.Section}"`);
+      if (item.Key) parts.push(`Key: "${item.Key}"`);
+      if (item.String) parts.push(`String: "${item.String}"`);
+      if (item.Flags) parts.push(`Flags: ${item.Flags}`);
+      if (item.Components) parts.push(`Components: ${item.Components}`);
+      if (item.Tasks) parts.push(`Tasks: ${item.Tasks}`);
+      if (item.Check) parts.push(`Check: ${item.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 InstallDelete 部分
+   */
+  private generateInstallDeleteSection(
+    items: NonNullable<InnoSetupConfig["InstallDelete"]>
+  ): string {
+    const lines = ["[InstallDelete]"];
+
+    for (const item of items) {
+      const parts = [`Type: ${item.Type}`];
+      parts.push(`Name: "${item.Name}"`);
+      if (item.Components) parts.push(`Components: ${item.Components}`);
+      if (item.Tasks) parts.push(`Tasks: ${item.Tasks}`);
+      if (item.Check) parts.push(`Check: ${item.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 UninstallDelete 部分
+   */
+  private generateUninstallDeleteSection(
+    items: NonNullable<InnoSetupConfig["UninstallDelete"]>
+  ): string {
+    const lines = ["[UninstallDelete]"];
+
+    for (const item of items) {
+      const parts = [`Type: ${item.Type}`];
+      parts.push(`Name: "${item.Name}"`);
+      if (item.Components) parts.push(`Components: ${item.Components}`);
+      if (item.Tasks) parts.push(`Tasks: ${item.Tasks}`);
+      if (item.Check) parts.push(`Check: ${item.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Registry 部分
+   */
+  private generateRegistrySection(
+    items: NonNullable<InnoSetupConfig["Registry"]>
+  ): string {
+    const lines = ["[Registry]"];
+
+    for (const item of items) {
+      const parts = [`Root: ${item.Root}`];
+      parts.push(`Subkey: "${item.Subkey}"`);
+      if (item.ValueType) parts.push(`ValueType: ${item.ValueType}`);
+      if (item.ValueName !== undefined)
+        parts.push(`ValueName: "${item.ValueName}"`);
+      if (item.ValueData !== undefined) {
+        if (typeof item.ValueData === "string") {
+          parts.push(`ValueData: "${item.ValueData}"`);
+        } else {
+          parts.push(`ValueData: ${item.ValueData}`);
+        }
+      }
+      if (item.Permissions) parts.push(`Permissions: ${item.Permissions}`);
+      if (item.Flags) parts.push(`Flags: ${item.Flags}`);
+      if (item.Components) parts.push(`Components: ${item.Components}`);
+      if (item.Tasks) parts.push(`Tasks: ${item.Tasks}`);
+      if (item.Check) parts.push(`Check: ${item.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Run 部分
+   */
+  private generateRunSection(
+    items: NonNullable<InnoSetupConfig["Run"]>
+  ): string {
+    const lines = ["[Run]"];
+
+    for (const item of items) {
+      const parts = [`Filename: "${item.Filename}"`];
+      if (item.Parameters) parts.push(`Parameters: "${item.Parameters}"`);
+      if (item.WorkingDir) parts.push(`WorkingDir: "${item.WorkingDir}"`);
+      if (item.StatusMsg) parts.push(`StatusMsg: "${item.StatusMsg}"`);
+      if (item.Description) parts.push(`Description: "${item.Description}"`);
+      if (item.Flags) parts.push(`Flags: ${item.Flags}`);
+      if (item.RunOnceId) parts.push(`RunOnceId: "${item.RunOnceId}"`);
+      if (item.Verb) parts.push(`Verb: "${item.Verb}"`);
+      if (item.Components) parts.push(`Components: ${item.Components}`);
+      if (item.Tasks) parts.push(`Tasks: ${item.Tasks}`);
+      if (item.Languages) parts.push(`Languages: ${item.Languages}`);
+      if (item.Check) parts.push(`Check: ${item.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 UninstallRun 部分
+   */
+  private generateUninstallRunSection(
+    items: NonNullable<InnoSetupConfig["UninstallRun"]>
+  ): string {
+    const lines = ["[UninstallRun]"];
+
+    for (const item of items) {
+      const parts = [`Filename: "${item.Filename}"`];
+      if (item.Parameters) parts.push(`Parameters: "${item.Parameters}"`);
+      if (item.WorkingDir) parts.push(`WorkingDir: "${item.WorkingDir}"`);
+      if (item.StatusMsg) parts.push(`StatusMsg: "${item.StatusMsg}"`);
+      if (item.Description) parts.push(`Description: "${item.Description}"`);
+      if (item.Flags) parts.push(`Flags: ${item.Flags}`);
+      if (item.RunOnceId) parts.push(`RunOnceId: "${item.RunOnceId}"`);
+      if (item.Components) parts.push(`Components: ${item.Components}`);
+      if (item.Tasks) parts.push(`Tasks: ${item.Tasks}`);
+      if (item.Check) parts.push(`Check: ${item.Check}`);
+
+      lines.push(parts.join("; "));
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Messages 部分
+   */
+  private generateMessagesSection(
+    messages: NonNullable<InnoSetupConfig["Messages"]>
+  ): string {
+    const lines = ["[Messages]"];
+
+    for (const [key, value] of Object.entries(messages)) {
+      lines.push(`${key}=${value}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 CustomMessages 部分
+   */
+  private generateCustomMessagesSection(
+    messages: NonNullable<InnoSetupConfig["CustomMessages"]>
+  ): string {
+    const lines = ["[CustomMessages]"];
+
+    for (const [key, value] of Object.entries(messages)) {
+      lines.push(`${key}=${value}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 生成 Code 部分
+   */
+  private generateCodeSection(code: string): string {
+    return `[Code]\n${code}`;
+  }
+
+  /**
+   * 将脚本保存到文件
+   */
+  saveToFile(scriptContent: string, filePath: string): void {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, scriptContent, "utf-8");
+  }
+}

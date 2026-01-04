@@ -53,6 +53,16 @@ jobs:
       contents: write
       id-token: write
 
+    # ------------------------------------------------------------------------
+    # 环境变量 (env) - Job 级别
+    # ------------------------------------------------------------------------
+    # 在 job 级别设置 NODE_AUTH_TOKEN，这样所有 step 都可以使用
+    # 包括 npm ci、npm whoami、npm publish 等命令
+    # 如果放在单个 step 中，其他 step 就无法使用这个 token
+    # ------------------------------------------------------------------------
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     steps:
       # ------------------------------------------------------------------------
       # Step 1: 检出代码
@@ -199,7 +209,7 @@ jobs:
       #   --provenance: 添加来源证明，让用户知道这个包是从哪个仓库构建的
       #   --access public: 公开发布 (对于非 scope 包可以省略)
       #   --verbose: 显示详细的发布过程
-      # NODE_AUTH_TOKEN: npm 认证 token，从 GitHub Secrets 中获取
+      # 注: NODE_AUTH_TOKEN 已在 job 级别设置，所有步骤都可以使用
       # ------------------------------------------------------------------------
       - name: Publish to npm
         run: |
@@ -222,8 +232,6 @@ jobs:
           echo ""
           echo "You can now install this package with:"
           echo "  npm install $(node -p "require('./package.json').name")"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # 从 Secrets 中读取 npm token
 
       # ------------------------------------------------------------------------
       # Step 10: 创建 GitHub Release (仅手动触发时)

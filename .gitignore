@@ -9,6 +9,6 @@ coverage/
 .nyc_output/
 
 # Vendor - 排除 Innosetup 便携版二进制文件
-vendor/*
-!vendor/README.md
-!vendor/.gitkeep
+# vendor/*
+# !vendor/README.md
+# !vendor/.gitkeep

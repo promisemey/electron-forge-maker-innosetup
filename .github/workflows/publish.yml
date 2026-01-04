@@ -61,7 +61,7 @@ jobs:
     # 如果放在单个 step 中，其他 step 就无法使用这个 token
     # ------------------------------------------------------------------------
     env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.XUNRUA_NPM }}
 
     steps:
       # ------------------------------------------------------------------------
@@ -224,7 +224,7 @@ jobs:
           npm whoami 2>/dev/null && echo "[Info] Authenticated successfully" || echo "[Info] Using NPM_TOKEN from secrets"
           echo ""
           echo "[Info] Starting publish..."
-          npm publish  --access public --verbose
+          npm publish --access public --verbose
           echo ""
           echo "========================================"
           echo "[Done] Package published successfully!"

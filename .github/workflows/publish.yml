@@ -1,5 +1,25 @@
+# ============================================================================
+# Publish - 自动发布到 npm 工作流
+# ============================================================================
+# 作用: 自动化发布流程，包括测试、构建、版本升级、发布到 npm
+# 触发条件:
+#   1. 手动触发 (workflow_dispatch) - 推荐，可以选择版本类型
+#   2. 创建 GitHub Release 时自动触发
+# ============================================================================
+
 name: Publish to npm
 
+# ----------------------------------------------------------------------------
+# 触发条件 (on)
+# ----------------------------------------------------------------------------
+# release: 当在 GitHub 上创建新的 Release 时触发
+# workflow_dispatch: 允许手动触发，可以在 Actions 页面点击按钮运行
+#   - inputs: 定义手动触发时可以选择的参数
+#   - release_type: 版本升级类型 (patch/minor/major)
+#     - patch: 修复 bug，0.1.0 -> 0.1.1
+#     - minor: 新功能，0.1.0 -> 0.2.0
+#     - major: 重大更新，0.1.0 -> 1.0.0
+# ----------------------------------------------------------------------------
 on:
   release:
     types: [created]
@@ -16,58 +36,215 @@ on:
           - major
 
 jobs:
+  # ==========================================================================
+  # Job: 发布到 npm
+  # ==========================================================================
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
+
+    # ------------------------------------------------------------------------
+    # 权限设置 (permissions)
+    # ------------------------------------------------------------------------
+    # contents: write - 允许推送代码和标签到仓库
+    # id-token: write - 允许生成 OIDC token，用于 npm provenance (来源证明)
+    # ------------------------------------------------------------------------
     permissions:
       contents: write
       id-token: write
 
     steps:
+      # ------------------------------------------------------------------------
+      # Step 1: 检出代码
+      # ------------------------------------------------------------------------
+      # fetch-depth: 0 表示获取完整的 git 历史
+      # 这对于版本管理和标签操作是必需的
+      # ------------------------------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 获取完整的 git 历史，包括所有标签
 
+      # ------------------------------------------------------------------------
+      # Step 2: 设置 Node.js 环境
+      # ------------------------------------------------------------------------
+      # registry-url: 设置 npm 注册中心地址，这是发布到 npm 必需的
+      # 设置后，npm publish 命令会自动使用这个 registry
+      # ------------------------------------------------------------------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20.x"
-          registry-url: "https://registry.npmjs.org"
+          registry-url: "https://registry.npmjs.org" # npm 官方注册中心
           cache: "npm"
 
+      # ------------------------------------------------------------------------
+      # Step 3: 配置 Git 用户信息
+      # ------------------------------------------------------------------------
+      # 因为要推送版本标签，需要配置 git 用户
+      # 使用 github-actions[bot] 作为提交者，这是 GitHub 的官方机器人账号
+      # ------------------------------------------------------------------------
       - name: Configure Git
         run: |
+          echo "========================================"
+          echo "[Step] Configuring Git user..."
+          echo "========================================"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          echo "[Done] Git user configured"
+          echo "  - Name: github-actions[bot]"
+          echo "  - Email: github-actions[bot]@users.noreply.github.com"
 
+      # ------------------------------------------------------------------------
+      # Step 4: 安装依赖
+      # ------------------------------------------------------------------------
       - name: Install dependencies
-        run: npm ci
+        run: |
+          echo "========================================"
+          echo "[Step] Installing dependencies..."
+          echo "========================================"
+          echo "Node version: $(node -v)"
+          echo "npm version: $(npm -v)"
+          echo ""
+          npm ci
+          echo ""
+          echo "[Done] Dependencies installed successfully"
 
+      # ------------------------------------------------------------------------
+      # Step 5: 运行测试
+      # ------------------------------------------------------------------------
+      # 发布前必须确保测试通过，避免发布有问题的版本
+      # ------------------------------------------------------------------------
       - name: Run tests
-        run: npm test
+        run: |
+          echo "========================================"
+          echo "[Step] Running tests before publish..."
+          echo "========================================"
+          npm test
+          echo ""
+          echo "[Done] All tests passed"
 
+      # ------------------------------------------------------------------------
+      # Step 6: 构建项目
+      # ------------------------------------------------------------------------
       - name: Build
-        run: npm run build
+        run: |
+          echo "========================================"
+          echo "[Step] Building project..."
+          echo "========================================"
+          npm run build
+          echo ""
+          echo "[Info] Build output (dist/):"
+          ls -la dist/
+          echo ""
+          echo "[Done] Build completed successfully"
 
-      - name: Bump version (manual trigger)
+      # ------------------------------------------------------------------------
+      # Step 7: 验证包内容
+      # ------------------------------------------------------------------------
+      # 发布前检查包的内容是否正确
+      # npm pack --dry-run: 模拟打包，显示将要发布的文件列表
+      # ------------------------------------------------------------------------
+      - name: Verify package contents
+        run: |
+          echo "========================================"
+          echo "[Step] Verifying package contents..."
+          echo "========================================"
+          echo ""
+          echo "[Info] Package information:"
+          echo "  - Name: $(node -p "require('./package.json').name")"
+          echo "  - Version: $(node -p "require('./package.json').version")"
+          echo "  - Main: $(node -p "require('./package.json').main")"
+          echo "  - Types: $(node -p "require('./package.json').types")"
+          echo ""
+          echo "[Info] Files to be published:"
+          npm pack --dry-run
+          echo ""
+          echo "[Done] Package verification completed"
+
+      # ------------------------------------------------------------------------
+      # Step 8: 版本升级 (仅手动触发时)
+      # ------------------------------------------------------------------------
+      # if: github.event_name == 'workflow_dispatch'
+      #   - 只有当通过 Actions 页面手动触发时才执行
+      # npm version: 自动升级版本号并创建 git 标签
+      #   - patch: 0.1.0 -> 0.1.1
+      #   - minor: 0.1.0 -> 0.2.0
+      #   - major: 0.1.0 -> 1.0.0
+      # git push --follow-tags: 推送代码和标签
+      # ------------------------------------------------------------------------
+      - name: Bump version (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
         run: |
+          echo "========================================"
+          echo "[Step] Bumping version..."
+          echo "========================================"
+          echo "Release type: ${{ github.event.inputs.release_type }}"
+          echo "Current version: $(node -p "require('./package.json').version")"
+          echo ""
           npm version ${{ github.event.inputs.release_type }} -m "chore: release v%s"
+          echo ""
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "[Info] New version: $NEW_VERSION"
+          echo ""
+          echo "[Step] Pushing version tag to GitHub..."
           git push --follow-tags
+          echo ""
+          echo "[Done] Version bumped and pushed successfully"
 
+      # ------------------------------------------------------------------------
+      # Step 9: 发布到 npm
+      # ------------------------------------------------------------------------
+      # npm publish: 发布包到 npm 注册中心
+      #   --provenance: 添加来源证明，让用户知道这个包是从哪个仓库构建的
+      #   --access public: 公开发布 (对于非 scope 包可以省略)
+      #   --verbose: 显示详细的发布过程
+      # NODE_AUTH_TOKEN: npm 认证 token，从 GitHub Secrets 中获取
+      # ------------------------------------------------------------------------
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: |
+          echo "========================================"
+          echo "[Step] Publishing to npm..."
+          echo "========================================"
+          echo "Registry: https://registry.npmjs.org"
+          echo "Package: $(node -p "require('./package.json').name")"
+          echo "Version: $(node -p "require('./package.json').version")"
+          echo ""
+          echo "[Info] Checking npm authentication..."
+          npm whoami 2>/dev/null && echo "[Info] Authenticated successfully" || echo "[Info] Using NPM_TOKEN from secrets"
+          echo ""
+          echo "[Info] Starting publish..."
+          npm publish --provenance --access public --verbose
+          echo ""
+          echo "========================================"
+          echo "[Done] Package published successfully!"
+          echo "========================================"
+          echo ""
+          echo "You can now install this package with:"
+          echo "  npm install $(node -p "require('./package.json').name")"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # 从 Secrets 中读取 npm token
 
-      - name: Create GitHub Release (manual trigger)
+      # ------------------------------------------------------------------------
+      # Step 10: 创建 GitHub Release (仅手动触发时)
+      # ------------------------------------------------------------------------
+      # 发布到 npm 后，同时在 GitHub 上创建一个 Release 记录
+      # 这样用户可以在 GitHub 上查看每个版本的发布记录
+      # ------------------------------------------------------------------------
+      - name: Get package version
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "[Info] Package version: $VERSION"
+
+      - name: Create GitHub Release (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.package-version.outputs.version }}
-          release_name: Release v${{ steps.package-version.outputs.version }}
-          draft: false
-          prerelease: false
+          name: Release v${{ steps.package-version.outputs.version }}
+          generate_release_notes: true # 自动生成发布说明
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub 自动提供的 token

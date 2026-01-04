@@ -39,7 +39,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/electron/forge"
+    "url": "https://github.com/promisemey/electron-forge-maker-innosetup.git"
   },
   "engines": {
     "node": ">=14.0.0"

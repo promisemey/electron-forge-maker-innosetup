@@ -4,7 +4,7 @@ import MakerInnosetup from "../src/MakerInnosetup";
 
 describe("路径解析功能", () => {
   let maker: MakerInnosetup;
-  const projectDir = "C:\\Users\\test\\my-project";
+  const projectDir = path.join(process.cwd(), "my-project");
   const buildDir = path.join(projectDir, "out", "my-app-win32-x64");
 
   beforeEach(() => {
@@ -31,7 +31,9 @@ describe("路径解析功能", () => {
       const resolvePath = (testMaker as any).resolvePath.bind(testMaker);
       const result = resolvePath("./assets/icon.ico", projectDir);
 
-      expect(result).toBe(path.join(projectDir, "assets", "icon.ico"));
+      expect(path.normalize(result)).toBe(
+        path.join(projectDir, "assets", "icon.ico")
+      );
     });
 
     it("应该保持绝对路径不变", () => {
@@ -39,7 +41,7 @@ describe("路径解析功能", () => {
       const resolvePath = (maker as any).resolvePath.bind(maker);
       const result = resolvePath(absolutePath);
 
-      expect(result).toBe(absolutePath);
+      expect(path.normalize(result)).toBe(absolutePath);
     });
 
     it("当禁用解析时应该返回原路径", () => {
@@ -200,10 +202,12 @@ describe("路径解析功能", () => {
       (testMaker as any).projectDir = projectDir;
       (testMaker as any).resolveConfigPaths(config, buildDir);
 
-      expect(config.Setup.SetupIconFile).toBe(
+      expect(path.normalize(config.Setup.SetupIconFile)).toBe(
         path.join(projectDir, "assets", "icon.ico")
       );
-      expect(config.Setup.LicenseFile).toBe(path.join(projectDir, "LICENSE"));
+      expect(path.normalize(config.Setup.LicenseFile)).toBe(
+        path.join(projectDir, "LICENSE")
+      );
     });
 
     it("应该解析 Files 中的 Source 路径", () => {

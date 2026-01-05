@@ -2,10 +2,11 @@
  * ISS 解析器测试
  */
 
+import { describe, it, expect } from "@jest/globals";
 import { MakerInnosetup, InnoScriptParser } from "../src/index";
 
-// 测试 ISS 内容解析
-const sampleIss = `
+describe("ISS 解析器", () => {
+  const sampleIss = `
 ; Sample Inno Setup Script
 
 [Setup]
@@ -51,20 +52,63 @@ begin
 end;
 `;
 
-console.log("Testing ISS content parsing...");
-const config1 = InnoScriptParser.parse(sampleIss);
-console.log("Parsed config:", JSON.stringify(config1, null, 2));
+  it("应该能够解析 ISS 内容", () => {
+    const config = InnoScriptParser.parse(sampleIss);
 
-console.log("\nTesting MakerInnosetup.fromIssContent()...");
-const makerConfig = MakerInnosetup.fromIssContent(sampleIss);
-console.log("Maker config:", JSON.stringify(makerConfig, null, 2));
+    expect(config).toBeDefined();
+    expect(config.Setup).toBeDefined();
+    expect(config.Setup?.AppName).toBe("My Application");
+    expect(config.Setup?.AppVersion).toBe("1.0.0");
+    expect(config.Setup?.AppPublisher).toBe("My Company");
+  });
 
-// 测试命名导入
-console.log("\nTesting named import { MakerInnosetup }...");
-const maker = new MakerInnosetup({
-  appName: "TestApp",
-  appVersion: "1.0.0",
+  it("应该能够通过 fromIssContent 创建 Maker 配置", () => {
+    const makerConfig = MakerInnosetup.fromIssContent(sampleIss);
+
+    expect(makerConfig).toBeDefined();
+    expect(makerConfig.config).toBeDefined();
+    expect(makerConfig.config?.Setup?.AppName).toBe("My Application");
+  });
+
+  it("应该能够创建 MakerInnosetup 实例", () => {
+    const maker = new MakerInnosetup({
+      appName: "TestApp",
+      appVersion: "1.0.0",
+    });
+
+    expect(maker).toBeDefined();
+    expect(maker.name).toBe("innosetup");
+  });
+
+  it("应该正确解析 Languages 部分", () => {
+    const config = InnoScriptParser.parse(sampleIss);
+
+    expect(config.Languages).toBeDefined();
+    expect(config.Languages?.length).toBe(2);
+    expect(config.Languages?.[0].Name).toBe("english");
+    expect(config.Languages?.[1].Name).toBe("chinesesimplified");
+  });
+
+  it("应该正确解析 Files 部分", () => {
+    const config = InnoScriptParser.parse(sampleIss);
+
+    expect(config.Files).toBeDefined();
+    expect(config.Files?.length).toBeGreaterThan(0);
+    expect(config.Files?.[0].Source).toContain("{src}");
+    expect(config.Files?.[0].DestDir).toBe("{app}");
+  });
+
+  it("应该正确解析 Icons 部分", () => {
+    const config = InnoScriptParser.parse(sampleIss);
+
+    expect(config.Icons).toBeDefined();
+    expect(config.Icons?.length).toBe(2);
+  });
+
+  it("应该正确解析 Code 部分", () => {
+    const config = InnoScriptParser.parse(sampleIss);
+
+    expect(config.Code).toBeDefined();
+    expect(config.Code).toContain("InitializeSetup");
+  });
 });
-console.log("Maker instance created:", maker.name);
-
-console.log("\n✅ All ISS parser tests passed!");

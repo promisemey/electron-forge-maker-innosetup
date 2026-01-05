@@ -1,11 +1,11 @@
-# @electron-forge/maker-innosetup
+# electron-forge-maker-innosetup
 
 一个用于 [Electron Forge](https://www.electronforge.io/) 的 Innosetup Maker，支持使用 Innosetup 为 Windows 平台创建安装程序。继承自 `@electron-forge/maker-base`。
 
 ## 安装
 
 ```bash
-npm install --save-dev @electron-forge/maker-innosetup
+npm install --save-dev electron-forge-maker-innosetup
 ```
 
 ## 前置要求
@@ -33,16 +33,16 @@ vendor/
 
 ```typescript
 // 命名导入（推荐）
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 // 默认导入
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 // 导入解析器
 import {
   MakerInnosetup,
   InnoScriptParser,
-} from "@electron-forge/maker-innosetup";
+} from "electron-forge-maker-innosetup";
 ```
 
 ### 方式一：在配置文件中使用（推荐）
@@ -51,7 +51,7 @@ import {
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   makers: [
@@ -78,7 +78,7 @@ export default config;
 module.exports = {
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         appName: "MyApp",
         appPublisher: "My Company",
@@ -92,7 +92,7 @@ module.exports = {
 ### 完整配置示例
 
 ```typescript
-import type { MakerInnosetupConfig } from "@electron-forge/maker-innosetup";
+import type { MakerInnosetupConfig } from "electron-forge-maker-innosetup";
 
 const config: MakerInnosetupConfig = {
   // 应用信息
@@ -185,7 +185,7 @@ const config: MakerInnosetupConfig = {
 
 ```javascript
 {
-  name: '@electron-forge/maker-innosetup',
+  name: 'electron-forge-maker-innosetup',
   config: {
     scriptPath: './installer.iss'
   }
@@ -196,7 +196,7 @@ const config: MakerInnosetupConfig = {
 #### 方法 2: 解析 ISS 文件为配置
 
 ```typescript
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 // 从 ISS 文件解析配置
 const config = MakerInnosetup.fromIssFile("./installer.iss");
@@ -209,7 +209,7 @@ const config2 = MakerInnosetup.fromIssContent(issContent);
 const forgeConfig: ForgeConfig = {
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: config, // 使用解析后的配置
       platforms: ["win32"],
     },

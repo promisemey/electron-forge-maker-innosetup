@@ -3,7 +3,7 @@
 ## 1. 安装
 
 ```bash
-npm install --save-dev @electron-forge/maker-innosetup
+npm install --save-dev electron-forge-maker-innosetup
 ```
 
 ## 2. 准备 Innosetup
@@ -49,7 +49,7 @@ your-project/
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -98,7 +98,7 @@ module.exports = {
   },
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         appName: "My Application",
         appPublisher: "My Company",
@@ -229,7 +229,7 @@ new MakerInnosetup({
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   packagerConfig: {

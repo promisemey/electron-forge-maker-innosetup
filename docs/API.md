@@ -413,7 +413,7 @@ interface RunSection {
 ### 基本使用
 
 ```typescript
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 const maker = new MakerInnosetup(
   {

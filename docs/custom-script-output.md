@@ -36,13 +36,13 @@ Error: ENOENT: no such file or directory, scandir 'E:\workSpace\police-self-repo
 // 自动解析脚本中的 OutputDir
 if (this.config.scriptPath) {
   scriptPath = this.config.scriptPath;
-  
+
   // 解析脚本以获取实际的输出目录
   const parsedConfig = InnoScriptParser.parseFile(scriptPath);
   if (parsedConfig.Setup?.OutputDir) {
     const scriptOutputDir = parsedConfig.Setup.OutputDir;
-    actualOutputDir = path.isAbsolute(scriptOutputDir) 
-      ? scriptOutputDir 
+    actualOutputDir = path.isAbsolute(scriptOutputDir)
+      ? scriptOutputDir
       : path.resolve(path.dirname(scriptPath), scriptOutputDir);
   }
 }
@@ -65,7 +65,7 @@ OutputBaseFilename=Police Self Report_{#MyAppVersion}
 
 ```typescript
 {
-  name: "@electron-forge/maker-innosetup",
+  name: "electron-forge-maker-innosetup",
   config: {
     scriptPath: "./installer.iss"
   }
@@ -85,6 +85,7 @@ OutputBaseFilename=MyApp-Setup
 ```
 
 **项目结构**：
+
 ```
 project/
 ├── installer.iss
@@ -108,7 +109,7 @@ OutputBaseFilename=MyApp-Setup
 
 ```typescript
 {
-  name: "@electron-forge/maker-innosetup",
+  name: "electron-forge-maker-innosetup",
   config: {
     scriptPath: "./installer.iss",
     outputDir: "./out/installers"  // 使用 Maker 配置的目录
@@ -127,7 +128,7 @@ OutputBaseFilename=MyApp-Setup
 ```typescript
 // forge.config.ts
 {
-  name: "@electron-forge/maker-innosetup",
+  name: "electron-forge-maker-innosetup",
   config: {
     scriptPath: "./installer.iss",
     outputDir: "./out/installers"  // Maker 控制输出目录
@@ -160,7 +161,7 @@ OutputDir=output
 ```typescript
 // 不指定 scriptPath，使用配置对象
 {
-  name: "@electron-forge/maker-innosetup",
+  name: "electron-forge-maker-innosetup",
   config: {
     appName: "My App",
     // 自动输出到: out/make/innosetup.windows/x64/
@@ -201,6 +202,7 @@ Warning: A message named "DownloadingLabel" has not been defined for the "chines
 如果你之前遇到过 "ENOENT" 错误：
 
 **之前的解决方法**（不再需要）：
+
 ```typescript
 // ❌ 旧方法：手动复制文件
 config: {
@@ -210,6 +212,7 @@ config: {
 ```
 
 **现在的方法**（自动处理）：
+
 ```typescript
 // ✅ 新方法：自动解析和查找
 config: {
@@ -229,10 +232,12 @@ config: {
 ### 问题：仍然找不到安装包
 
 **可能原因**：
+
 1. 脚本中的 `OutputBaseFilename` 与预期不符
 2. 编译失败但没有报错
 
 **解决方法**：
+
 ```typescript
 // 启用详细日志
 config: {
@@ -244,6 +249,7 @@ config: {
 ### 问题：路径包含空格导致错误
 
 **解决方法**：
+
 ```ini
 ; 在 ISS 中使用引号
 [Setup]

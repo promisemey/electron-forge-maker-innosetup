@@ -12,7 +12,7 @@
 ## 安装
 
 ```bash
-npm install @electron-forge/maker-innosetup
+npm install electron-forge-maker-innosetup
 ```
 
 ## 导入方式
@@ -20,19 +20,22 @@ npm install @electron-forge/maker-innosetup
 ### 1. 命名导入（推荐）
 
 ```typescript
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 ```
 
 ### 2. 默认导入
 
 ```typescript
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 ```
 
 ### 3. 导入解析器
 
 ```typescript
-import { MakerInnosetup, InnoScriptParser } from "@electron-forge/maker-innosetup";
+import {
+  MakerInnosetup,
+  InnoScriptParser,
+} from "electron-forge-maker-innosetup";
 ```
 
 ## 使用方法
@@ -40,7 +43,7 @@ import { MakerInnosetup, InnoScriptParser } from "@electron-forge/maker-innosetu
 ### 方法 1: 从 ISS 文件创建配置
 
 ```typescript
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 // 从现有的 ISS 文件创建配置
 const config = MakerInnosetup.fromIssFile("./path/to/installer.iss");
@@ -52,7 +55,7 @@ const maker = new MakerInnosetup(config);
 ### 方法 2: 从 ISS 内容创建配置
 
 ```typescript
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 const issContent = `
 [Setup]
@@ -80,7 +83,10 @@ const maker = new MakerInnosetup(config);
 ### 方法 3: 直接使用解析器
 
 ```typescript
-import { InnoScriptParser, MakerInnosetupConfig } from "@electron-forge/maker-innosetup";
+import {
+  InnoScriptParser,
+  MakerInnosetupConfig,
+} from "electron-forge-maker-innosetup";
 import * as fs from "fs";
 
 // 解析 ISS 文件
@@ -105,7 +111,7 @@ const makerConfig: MakerInnosetupConfig = {
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 // 从现有的 ISS 文件加载配置
 const innosetupConfig = MakerInnosetup.fromIssFile("./installer.iss");
@@ -118,16 +124,16 @@ const config: ForgeConfig = {
   makers: [
     // 方法 1: 使用解析的配置
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: innosetupConfig,
       platforms: ["win32"],
     },
 
     // 方法 2: 直接指定 ISS 文件
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
-        scriptPath: "./installer.iss",  // 直接使用现有的 ISS 文件
+        scriptPath: "./installer.iss", // 直接使用现有的 ISS 文件
         innosetupPath: "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
       },
       platforms: ["win32"],
@@ -211,7 +217,7 @@ Filename: "{app}\MyElectronApp.exe"; Description: "Launch My Electron App"; Flag
 ```typescript
 // forge.config.ts
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 import * as path from "path";
 
 const config: ForgeConfig = {
@@ -222,15 +228,15 @@ const config: ForgeConfig = {
   },
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       // 选项 1: 直接使用现有的 ISS 文件
       config: {
         scriptPath: path.resolve(__dirname, "installer.iss"),
       },
-      
+
       // 选项 2: 解析 ISS 文件并使用配置
       // config: MakerInnosetup.fromIssFile("./installer.iss"),
-      
+
       platforms: ["win32"],
     },
   ],
@@ -244,7 +250,7 @@ export default config;
 ### 修改解析后的配置
 
 ```typescript
-import { MakerInnosetup } from "@electron-forge/maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 // 从 ISS 文件解析
 const config = MakerInnosetup.fromIssFile("./installer.iss");
@@ -268,7 +274,10 @@ const maker = new MakerInnosetup(config);
 ### 合并多个配置
 
 ```typescript
-import { MakerInnosetup, InnoScriptParser } from "@electron-forge/maker-innosetup";
+import {
+  MakerInnosetup,
+  InnoScriptParser,
+} from "electron-forge-maker-innosetup";
 
 // 解析基础配置
 const baseConfig = InnoScriptParser.parseFile("./base.iss");

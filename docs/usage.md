@@ -3,7 +3,7 @@
 ## 安装
 
 ```bash
-npm install --save-dev @electron-forge/maker-innosetup
+npm install --save-dev electron-forge-maker-innosetup
 ```
 
 ## 配置方式一：简单配置
@@ -14,7 +14,7 @@ npm install --save-dev @electron-forge/maker-innosetup
 module.exports = {
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         appName: "My Electron App",
         appPublisher: "My Company",
@@ -32,7 +32,7 @@ module.exports = {
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   makers: [
@@ -107,7 +107,7 @@ export default config;
 module.exports = {
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         scriptPath: "./installer.iss",
         innosetupPath: "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
@@ -145,7 +145,7 @@ npm run make -- --platform=win32
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.0.0",
-    "@electron-forge/maker-innosetup": "^0.1.0",
+    "electron-forge-maker-innosetup": "^0.1.0",
     "electron": "^28.0.0"
   }
 }
@@ -155,7 +155,7 @@ npm run make -- --platform=win32
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import MakerInnosetup from "@electron-forge/maker-innosetup";
+import MakerInnosetup from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   packagerConfig: {

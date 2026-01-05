@@ -1,5 +1,5 @@
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import type { MakerInnosetupConfig } from "@electron-forge/maker-innosetup";
+import type { MakerInnosetupConfig } from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -10,7 +10,7 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         appName: "My Electron App",
         appVersion: "1.0.0",

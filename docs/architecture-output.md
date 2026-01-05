@@ -99,7 +99,7 @@ config: {
 {
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         appName: "MyApp",
         appVersion: "1.0.0",
@@ -116,7 +116,7 @@ config: {
 {
   makers: [
     {
-      name: "@electron-forge/maker-innosetup",
+      name: "electron-forge-maker-innosetup",
       config: {
         appName: "MyApp",
         appVersion: "1.0.0",

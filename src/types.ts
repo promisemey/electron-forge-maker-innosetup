@@ -3,9 +3,18 @@
  */
 
 /**
+ * Defines 部分配置 - 预处理器常量定义
+ */
+export interface InnoSetupDefines {
+  [key: string]: string | number;
+}
+
+/**
  * Setup 部分配置
  */
 export interface InnoSetupConfig {
+  /** Defines 部分配置 - 预处理器常量定义 */
+  Defines?: InnoSetupDefines;
   /** Setup 部分配置 */
   Setup?: {
     /** 应用程序名称 */

@@ -162,7 +162,7 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
         AppName: this.config.appName || appName,
         AppVersion: this.config.appVersion || appVersion,
         AppPublisher: this.config.appPublisher || "",
-        AppId: this.config.appId || `{{${appName}}`,
+        AppId: this.config.appId || `{{${appName}}}`,
         DefaultDirName: `{autopf}\\${appName}`,
         DefaultGroupName: appName,
         OutputDir: outputDir,
@@ -227,6 +227,7 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
     }
 
     return {
+      Defines: userConfig.Defines || defaultConfig.Defines,
       Setup: { ...defaultConfig.Setup, ...userConfig.Setup },
       Languages: userConfig.Languages || defaultConfig.Languages,
       Tasks: userConfig.Tasks || defaultConfig.Tasks,
@@ -256,7 +257,20 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
       config.Tasks = [];
     }
 
-    if (this.config.createDesktopIcon !== false) {
+    // 检查用户是否已经自定义了桌面图标任务
+    const hasDesktopTask = config.Tasks.some(
+      (task) => task.Name === "desktopicon"
+    );
+    const hasDesktopIcon = config.Icons?.some(
+      (icon) =>
+        icon.Name?.includes("{autodesktop}") && icon.Tasks === "desktopicon"
+    );
+
+    if (
+      this.config.createDesktopIcon !== false &&
+      !hasDesktopTask &&
+      !hasDesktopIcon
+    ) {
       config.Tasks.push({
         Name: "desktopicon",
         Description: "Create a &desktop icon",
@@ -273,7 +287,20 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
       }
     }
 
-    if (this.config.createQuickLaunchIcon) {
+    // 检查用户是否已经自定义了快速启动任务
+    const hasQuickLaunchTask = config.Tasks.some(
+      (task) => task.Name === "quicklaunchicon"
+    );
+    const hasQuickLaunchIcon = config.Icons?.some(
+      (icon) =>
+        icon.Name?.includes("Quick Launch") && icon.Tasks === "quicklaunchicon"
+    );
+
+    if (
+      this.config.createQuickLaunchIcon &&
+      !hasQuickLaunchTask &&
+      !hasQuickLaunchIcon
+    ) {
       config.Tasks.push({
         Name: "quicklaunchicon",
         Description: "Create a &Quick Launch icon",

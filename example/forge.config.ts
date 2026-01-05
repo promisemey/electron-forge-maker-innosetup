@@ -1,5 +1,4 @@
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import type { MakerInnosetupConfig } from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -103,7 +102,7 @@ const config: ForgeConfig = {
             },
           ],
         },
-      } as MakerInnosetupConfig,
+      },
       platforms: ["win32"],
     },
   ],

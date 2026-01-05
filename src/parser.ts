@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { InnoSetupConfig } from "./types";
+import { InnoSetupConfig, InnoSetupDefines } from "./types";
 
 /**
  * Inno Setup 脚本解析器
@@ -16,14 +16,21 @@ export class InnoScriptParser {
 
   /**
    * 解析 ISS 脚本内容
+   * @param content ISS 脚本内容
+   * @param preserveDefineReferences 是否保留 {#...} 引用（不替换为实际值）
    */
-  static parse(content: string): InnoSetupConfig {
+  static parse(
+    content: string,
+    preserveDefineReferences: boolean = true
+  ): InnoSetupConfig {
     const config: InnoSetupConfig = {};
+    const defines: InnoSetupDefines = {};
     const lines = content.split(/\r?\n/);
     let currentSection: string | null = null;
     let codeSection = "";
     let inCodeSection = false;
 
+    // 第一次扫描：提取所有 #define 定义
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
 
@@ -32,11 +39,46 @@ export class InnoScriptParser {
         continue;
       }
 
+      // 解析 #define 指令
+      const defineMatch = line.match(/^#define\s+(\w+)\s+(.+)$/);
+      if (defineMatch) {
+        const [, varName, varValue] = defineMatch;
+        // 如果保留引用，则保存原始表达式；否则计算值
+        defines[varName] = preserveDefineReferences
+          ? this.preserveDefineExpression(varValue)
+          : this.parseDefineValue(varValue, defines);
+      }
+    }
+
+    // 如果有 defines，添加到配置中
+    if (Object.keys(defines).length > 0) {
+      config.Defines = defines;
+    }
+
+    // 第二次扫描：解析配置段落
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i].trim();
+
+      // 跳过空行、注释和 #define 指令
+      if (
+        !line ||
+        line.startsWith(";") ||
+        line.startsWith("//") ||
+        line.startsWith("#define")
+      ) {
+        continue;
+      }
+
+      // 如果不保留引用，则替换常量引用 {#ConstantName}
+      if (!preserveDefineReferences) {
+        line = this.replaceDefines(line, defines);
+      }
+
       // 检测段落
       const sectionMatch = line.match(/^\[(\w+)\]$/);
       if (sectionMatch) {
         currentSection = sectionMatch[1];
-        
+
         // 处理 Code 段落
         if (currentSection === "Code") {
           inCodeSection = true;
@@ -49,7 +91,11 @@ export class InnoScriptParser {
 
       // 如果在 Code 段落中，收集所有代码
       if (inCodeSection) {
-        codeSection += lines[i] + "\n";
+        // 对于 Code 段落，使用原始行（带缩进）
+        const processedLine = preserveDefineReferences
+          ? lines[i]
+          : this.replaceDefines(lines[i], defines);
+        codeSection += processedLine + "\n";
         continue;
       }
 
@@ -98,6 +144,97 @@ export class InnoScriptParser {
   }
 
   /**
+   * 保留 #define 的原始表达式
+   */
+  private static preserveDefineExpression(value: string): string {
+    value = value.trim();
+    // 移除外层引号（如果有）
+    if (value.startsWith('"') && value.endsWith('"')) {
+      return value.slice(1, -1);
+    }
+    return value;
+  }
+
+  /**
+   * 解析 #define 的值，支持字符串拼接和函数调用
+   */
+  private static parseDefineValue(
+    value: string,
+    defines: InnoSetupDefines
+  ): string {
+    value = value.trim();
+
+    // 处理字符串拼接 (e.g., MyAppName + " File")
+    if (value.includes("+")) {
+      const parts = value.split("+").map((p) => p.trim());
+      let result = "";
+      for (const part of parts) {
+        if (part.startsWith('"') && part.endsWith('"')) {
+          // 直接的字符串字面量
+          result += part.slice(1, -1);
+        } else if (defines[part]) {
+          // 引用已定义的常量
+          result += defines[part];
+        } else {
+          // 未知引用，保持原样
+          result += part;
+        }
+      }
+      return result;
+    }
+
+    // 处理 StringChange 函数 (e.g., StringChange(MyAppAssocName, " ", ""))
+    const stringChangeMatch = value.match(
+      /StringChange\(([^,]+),\s*"([^"]*)",\s*"([^"]*)"\)/
+    );
+    if (stringChangeMatch) {
+      const [, varRef, searchStr, replaceStr] = stringChangeMatch;
+      const varName = varRef.trim();
+      const sourceValue = defines[varName] ? String(defines[varName]) : varName;
+      let result = sourceValue.replace(new RegExp(searchStr, "g"), replaceStr);
+
+      // 处理后续的拼接，例如 StringChange(...) + ".myp"
+      const fullMatch = value.match(/StringChange\([^)]+\)(.*)$/);
+      if (fullMatch && fullMatch[1]) {
+        const suffix = fullMatch[1].trim();
+        if (suffix.startsWith("+")) {
+          const suffixPart = suffix.substring(1).trim();
+          if (suffixPart.startsWith('"') && suffixPart.endsWith('"')) {
+            result += suffixPart.slice(1, -1);
+          } else {
+            result += suffixPart;
+          }
+        }
+      }
+      return result;
+    }
+
+    // 处理常量引用 (e.g., MyAppName)
+    if (defines[value]) {
+      return String(defines[value]);
+    }
+
+    // 移除外层引号
+    if (value.startsWith('"') && value.endsWith('"')) {
+      return value.slice(1, -1);
+    }
+
+    return value;
+  }
+
+  /**
+   * 替换字符串中的常量引用 {#ConstantName}
+   */
+  private static replaceDefines(
+    text: string,
+    defines: InnoSetupDefines
+  ): string {
+    return text.replace(/\{#(\w+)\}/g, (match, varName) => {
+      return defines[varName] !== undefined ? String(defines[varName]) : match;
+    });
+  }
+
+  /**
    * 解析 Setup 段落的一行
    */
   private static parseSetupLine(line: string, config: InnoSetupConfig): void {
@@ -105,7 +242,7 @@ export class InnoScriptParser {
     if (!match) return;
 
     const [, key, value] = match;
-    
+
     if (!config.Setup) {
       config.Setup = {};
     }
@@ -136,7 +273,7 @@ export class InnoScriptParser {
    */
   private static parseParams(line: string): Record<string, string> {
     const params: Record<string, string> = {};
-    const parts = line.split(";").map(p => p.trim());
+    const parts = line.split(";").map((p) => p.trim());
 
     for (const part of parts) {
       const match = part.match(/^(\w+):\s*(.+)$/);
@@ -157,7 +294,10 @@ export class InnoScriptParser {
   /**
    * 解析 Languages 段落
    */
-  private static parseLanguagesLine(line: string, config: InnoSetupConfig): void {
+  private static parseLanguagesLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     if (!config.Languages) {
       config.Languages = [];
     }
@@ -216,7 +356,10 @@ export class InnoScriptParser {
   /**
    * 解析 Components 段落
    */
-  private static parseComponentsLine(line: string, config: InnoSetupConfig): void {
+  private static parseComponentsLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     if (!config.Components) {
       config.Components = [];
     }
@@ -228,7 +371,9 @@ export class InnoScriptParser {
         Description: params.Description,
         Types: params.Types,
         Flags: params.Flags,
-        ExtraDiskSpaceRequired: params.ExtraDiskSpaceRequired ? parseInt(params.ExtraDiskSpaceRequired) : undefined,
+        ExtraDiskSpaceRequired: params.ExtraDiskSpaceRequired
+          ? parseInt(params.ExtraDiskSpaceRequired)
+          : undefined,
       });
     }
   }
@@ -339,7 +484,10 @@ export class InnoScriptParser {
   /**
    * 解析 InstallDelete 段落
    */
-  private static parseInstallDeleteLine(line: string, config: InnoSetupConfig): void {
+  private static parseInstallDeleteLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     if (!config.InstallDelete) {
       config.InstallDelete = [];
     }
@@ -359,7 +507,10 @@ export class InnoScriptParser {
   /**
    * 解析 UninstallDelete 段落
    */
-  private static parseUninstallDeleteLine(line: string, config: InnoSetupConfig): void {
+  private static parseUninstallDeleteLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     if (!config.UninstallDelete) {
       config.UninstallDelete = [];
     }
@@ -379,7 +530,10 @@ export class InnoScriptParser {
   /**
    * 解析 Registry 段落
    */
-  private static parseRegistryLine(line: string, config: InnoSetupConfig): void {
+  private static parseRegistryLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     if (!config.Registry) {
       config.Registry = [];
     }
@@ -437,7 +591,10 @@ export class InnoScriptParser {
   /**
    * 解析 UninstallRun 段落
    */
-  private static parseUninstallRunLine(line: string, config: InnoSetupConfig): void {
+  private static parseUninstallRunLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     if (!config.UninstallRun) {
       config.UninstallRun = [];
     }
@@ -462,12 +619,15 @@ export class InnoScriptParser {
   /**
    * 解析 Messages 段落
    */
-  private static parseMessagesLine(line: string, config: InnoSetupConfig): void {
+  private static parseMessagesLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     const match = line.match(/^(\w+)\s*=\s*(.+)$/);
     if (!match) return;
 
     const [, key, value] = match;
-    
+
     if (!config.Messages) {
       config.Messages = {};
     }
@@ -478,12 +638,15 @@ export class InnoScriptParser {
   /**
    * 解析 CustomMessages 段落
    */
-  private static parseCustomMessagesLine(line: string, config: InnoSetupConfig): void {
+  private static parseCustomMessagesLine(
+    line: string,
+    config: InnoSetupConfig
+  ): void {
     const match = line.match(/^(\w+)\s*=\s*(.+)$/);
     if (!match) return;
 
     const [, key, value] = match;
-    
+
     if (!config.CustomMessages) {
       config.CustomMessages = {};
     }

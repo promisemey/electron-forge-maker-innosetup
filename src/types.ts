@@ -676,4 +676,7 @@ export interface MakerInnosetupConfig {
 
   /** 是否创建快速启动图标 */
   createQuickLaunchIcon?: boolean;
+
+  /** 编译超时时间（毫秒），默认 5 分钟 */
+  compileTimeout?: number;
 }

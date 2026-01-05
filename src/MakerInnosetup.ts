@@ -313,6 +313,33 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
 
       let output = "";
       let errorOutput = "";
+      let isResolved = false;
+
+      const timeout = this.config.compileTimeout || 300000;
+      const timeoutHandle = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = false;
+          console.error("Innosetup compilation timeout, killing process...");
+          try {
+            iscc.kill("SIGKILL");
+          } catch (e) {
+            console.error("Failed to kill process", e);
+          }
+          reject(
+            new Error(`Innosetup compilation timeout after ${timeout} ms`)
+          );
+        }
+      }, timeout);
+
+      const cleanup = () => {
+        clearTimeout(timeoutHandle);
+
+        try {
+          if (iscc && !iscc.killed) {
+            iscc.kill("SIGKILL");
+          }
+        } catch (e) {}
+      };
 
       iscc.stdout.on("data", (data) => {
         const text = data.toString();
@@ -327,9 +354,14 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
       });
 
       iscc.on("close", (code) => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(timeoutHandle);
+
         if (code === 0) {
           resolve(output);
         } else {
+          cleanup();
           reject(
             new Error(
               `Innosetup compilation failed with code ${code}\n${errorOutput}`
@@ -339,8 +371,16 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
       });
 
       iscc.on("error", (err) => {
+        if (isResolved) return;
+        isResolved = true;
+        cleanup();
         reject(new Error(`Failed to start Innosetup compiler: ${err.message}`));
       });
+
+      // 处理进程意外退出
+      process.on("exit", cleanup);
+      process.on("SIGINT", cleanup);
+      process.on("SIGTERM", cleanup);
     });
   }
 

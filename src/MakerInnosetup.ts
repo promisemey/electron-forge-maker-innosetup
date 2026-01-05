@@ -15,10 +15,203 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
   defaultPlatforms: ForgePlatform[] = ["win32"];
 
   private scriptGenerator: InnoScriptGenerator;
+  private projectDir?: string;
+  private buildDir?: string;
 
   constructor(config: MakerInnosetupConfig = {}, platforms?: ForgePlatform[]) {
+    // 默认启用相对路径解析
+    if (config.resolveRelativePaths === undefined) {
+      config.resolveRelativePaths = true;
+    }
     super(config, platforms);
     this.scriptGenerator = new InnoScriptGenerator();
+  }
+
+  /**
+   * 解析路径 - 支持相对路径转换为绝对路径
+   * @param pathStr 输入路径
+   * @param baseDir 基础目录（默认为 projectDir）
+   * @returns 解析后的绝对路径
+   */
+  private resolvePath(
+    pathStr: string | undefined,
+    baseDir?: string
+  ): string | undefined {
+    if (!pathStr) {
+      return undefined;
+    }
+
+    // 如果禁用了相对路径解析，直接返回
+    if (this.config.resolveRelativePaths === false) {
+      return pathStr;
+    }
+
+    // 如果已经是绝对路径，直接返回
+    if (path.isAbsolute(pathStr)) {
+      return pathStr;
+    }
+
+    // 使用提供的 baseDir 或默认的 projectDir
+    const base = baseDir || this.projectDir || process.cwd();
+    return path.resolve(base, pathStr);
+  }
+
+  /**
+   * 解析配置中的路径占位符
+   * 支持：{project}, {assets}, {build}, {app}
+   * @param pathStr 包含占位符的路径字符串
+   * @returns 解析后的路径
+   */
+  private resolvePathPlaceholders(
+    pathStr: string | undefined
+  ): string | undefined {
+    if (!pathStr) {
+      return undefined;
+    }
+
+    let resolved = pathStr;
+
+    // {project} - 项目根目录
+    if (this.projectDir) {
+      resolved = resolved.replace(/\{project\}/g, this.projectDir);
+    }
+
+    // {build} - 构建输出目录
+    if (this.buildDir) {
+      resolved = resolved.replace(/\{build\}/g, this.buildDir);
+    }
+
+    // {assets} - 资源目录
+    const assetsDir = this.config.paths?.assetsDir || "assets";
+    if (this.projectDir) {
+      const assetsPath = path.resolve(this.projectDir, assetsDir);
+      resolved = resolved.replace(/\{assets\}/g, assetsPath);
+    }
+
+    return resolved;
+  }
+
+  /**
+   * 处理配置对象中的所有路径
+   * @param config Innosetup 配置对象
+   * @param appDir 应用目录
+   */
+  private resolveConfigPaths(config: InnoSetupConfig, appDir: string): void {
+    if (this.config.resolveRelativePaths === false) {
+      return;
+    }
+
+    const projectDir = this.config.paths?.projectDir || this.projectDir;
+
+    // 解析 Setup 部分的路径
+    if (config.Setup) {
+      // SetupIconFile
+      if (config.Setup.SetupIconFile) {
+        config.Setup.SetupIconFile = this.resolvePath(
+          this.resolvePathPlaceholders(config.Setup.SetupIconFile),
+          projectDir
+        )!;
+      }
+
+      // LicenseFile
+      if (config.Setup.LicenseFile) {
+        config.Setup.LicenseFile = this.resolvePath(
+          this.resolvePathPlaceholders(config.Setup.LicenseFile),
+          projectDir
+        )!;
+      }
+
+      // InfoBeforeFile
+      if (config.Setup.InfoBeforeFile) {
+        config.Setup.InfoBeforeFile = this.resolvePath(
+          this.resolvePathPlaceholders(config.Setup.InfoBeforeFile),
+          projectDir
+        )!;
+      }
+
+      // InfoAfterFile
+      if (config.Setup.InfoAfterFile) {
+        config.Setup.InfoAfterFile = this.resolvePath(
+          this.resolvePathPlaceholders(config.Setup.InfoAfterFile),
+          projectDir
+        )!;
+      }
+
+      // WizardImageFile
+      if (config.Setup.WizardImageFile) {
+        config.Setup.WizardImageFile = this.resolvePath(
+          this.resolvePathPlaceholders(config.Setup.WizardImageFile),
+          projectDir
+        )!;
+      }
+
+      // WizardSmallImageFile
+      if (config.Setup.WizardSmallImageFile) {
+        config.Setup.WizardSmallImageFile = this.resolvePath(
+          this.resolvePathPlaceholders(config.Setup.WizardSmallImageFile),
+          projectDir
+        )!;
+      }
+    }
+
+    // 解析 Languages 部分的路径
+    if (config.Languages) {
+      config.Languages.forEach((lang) => {
+        if (lang.LicenseFile && !lang.LicenseFile.startsWith("compiler:")) {
+          lang.LicenseFile = this.resolvePath(
+            this.resolvePathPlaceholders(lang.LicenseFile),
+            projectDir
+          );
+        }
+        if (
+          lang.InfoBeforeFile &&
+          !lang.InfoBeforeFile.startsWith("compiler:")
+        ) {
+          lang.InfoBeforeFile = this.resolvePath(
+            this.resolvePathPlaceholders(lang.InfoBeforeFile),
+            projectDir
+          );
+        }
+        if (lang.InfoAfterFile && !lang.InfoAfterFile.startsWith("compiler:")) {
+          lang.InfoAfterFile = this.resolvePath(
+            this.resolvePathPlaceholders(lang.InfoAfterFile),
+            projectDir
+          );
+        }
+      });
+    }
+
+    // 解析 Files 部分的路径
+    if (config.Files) {
+      config.Files.forEach((file) => {
+        // Source 路径处理
+        if (file.Source) {
+          // 首先替换我们自定义的占位符
+          let sourcePath = this.resolvePathPlaceholders(file.Source);
+          
+          // 如果替换后不是 Inno Setup 内置常量（如 {app}, {tmp}），则解析为绝对路径
+          // Inno Setup 常量通常以 {app}, {tmp}, {src}, {win}, {sys} 等开头
+          const isInnoConstant = sourcePath?.match(/^\{(app|tmp|src|win|sys|pf|cf|dao|fonts|userappdata|localappdata|group|autoprograms|autodesktop|commondocs)/i);
+          
+          if (sourcePath && !isInnoConstant) {
+            // 如果包含 * 通配符，需要特殊处理
+            if (sourcePath.includes("*")) {
+              const basePath = sourcePath.split("*")[0];
+              const wildcard = sourcePath.substring(basePath.length);
+              const resolvedBase = this.resolvePath(basePath, appDir);
+              sourcePath = resolvedBase ? resolvedBase + wildcard : sourcePath;
+            } else {
+              sourcePath = this.resolvePath(sourcePath, appDir);
+            }
+            
+            file.Source = sourcePath!;
+          } else if (sourcePath) {
+            // 是 Inno Setup 常量，保持不变
+            file.Source = sourcePath;
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -419,9 +612,15 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
     const appVersion = packageJSON.version || "1.0.0";
     const archId = this.getArchIdentifier(targetArch);
 
+    // 设置项目目录和构建目录，用于路径解析
+    this.projectDir = this.config.paths?.projectDir || process.cwd();
+    this.buildDir = this.config.paths?.buildDir || dir;
+
     console.log(
       `Creating Innosetup installer for ${appName} ${appVersion} (${targetArch})...`
     );
+    console.log(`Project directory: ${this.projectDir}`);
+    console.log(`Build directory: ${this.buildDir}`);
 
     // 查找编译器
     const compilerPath = this.findInnosetupCompiler();
@@ -447,7 +646,7 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
 
     if (this.config.scriptPath) {
       // 使用用户提供的脚本
-      scriptPath = this.config.scriptPath;
+      scriptPath = this.resolvePath(this.config.scriptPath, this.projectDir)!;
       console.log(`Using custom script: ${scriptPath}`);
 
       // 解析脚本以获取实际的输出目录
@@ -475,6 +674,9 @@ export default class MakerInnosetup extends MakerBase<MakerInnosetupConfig> {
         outputDir
       );
       finalConfig = this.mergeConfig(defaultConfig, this.config.config);
+
+      // 解析配置中的路径
+      this.resolveConfigPaths(finalConfig, dir);
 
       // 添加任务
       this.addTasks(finalConfig, appName);

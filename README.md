@@ -8,25 +8,6 @@
 npm install --save-dev electron-forge-maker-innosetup
 ```
 
-## 前置要求
-
-### 选项一：使用内置便携版（推荐）
-
-将 Innosetup 便携版放置在 `vendor/innosetup/` 目录：
-
-```
-vendor/
-└── innosetup/
-    ├── ISCC.exe
-    ├── ISCmplr.dll
-    ├── Default.isl
-    └── Languages/
-```
-
-### 选项二：系统安装
-
-需要在 Windows 系统上安装 [Innosetup](https://jrsoftware.org/isinfo.php)。
-
 ## 使用方法
 
 ### 导入方式
@@ -45,22 +26,74 @@ import {
 } from "electron-forge-maker-innosetup";
 ```
 
-### 方式一：在配置文件中使用（推荐）
+### 🎉 方式一：使用相对路径
+
+**为什么推荐？**
+
+- **可移植** - 配置可在不同机器间共享
+- **团队协作** - 每个开发者的路径可以不同
+- **CI/CD 友好** - 自动化构建无需修改配置
 
 在 `forge.config.ts` 中：
 
 ```typescript
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import MakerInnosetup from "electron-forge-maker-innosetup";
+import { MakerInnosetup } from "electron-forge-maker-innosetup";
 
 const config: ForgeConfig = {
   makers: [
     new MakerInnosetup(
       {
-        appName: "MyApp",
+        // 基本信息
+        appName: "My Electron App",
+        appVersion: "1.0.0",
         appPublisher: "My Company",
-        setupIconFile: "./assets/icon.ico",
+
+        // 使用相对路径 - 自动基于项目根目录解析
+        setupIconFile: "./assets/icons/icon.ico",
+        licenseFile: "./LICENSE",
+
         createDesktopIcon: true,
+
+        config: {
+          // 使用占位符
+          Defines: {
+            MyAppName: "My Electron App",
+            MyAppExeName: "MyElectronApp.exe",
+          },
+
+          Setup: {
+            AppName: "{#MyAppName}",
+            // 相对路径会自动解析
+            SetupIconFile: "./assets/icons/icon.ico",
+            ArchitecturesAllowed: "x64compatible",
+            PrivilegesRequired: "admin",
+          },
+
+          Files: [
+            {
+              // {build} 占位符会被替换为 Electron Forge 的打包输出目录
+              Source: "{build}\\*",
+              DestDir: "{app}",
+              Flags: "ignoreversion recursesubdirs createallsubdirs",
+            },
+          ],
+
+          Icons: [
+            {
+              Name: "{autoprograms}\\{#MyAppName}",
+              Filename: "{app}\\{#MyAppExeName}",
+            },
+          ],
+
+          Run: [
+            {
+              Filename: "{app}\\{#MyAppExeName}",
+              Description: "Launch {#MyAppName}",
+              Flags: "nowait postinstall skipifsilent",
+            },
+          ],
+        },
       },
       ["win32"]
     ),
@@ -70,7 +103,79 @@ const config: ForgeConfig = {
 export default config;
 ```
 
-### 方式二：使用配置对象
+#### 支持的路径占位符
+
+- `{project}` - 项目根目录
+- `{build}` - Electron Forge 打包输出目录
+- `{assets}` - 资源文件目录（默认为 `assets`）
+
+示例：
+
+```typescript
+setupIconFile: "{assets}/icons/icon.ico",  // 等同于 "./assets/icons/icon.ico"
+setupIconFile: "{project}/resources/icon.ico",
+Source: "{build}\\*",  // Electron Forge 打包后的文件
+```
+
+#### 路径配置
+
+```typescript
+new MakerInnosetup({
+  // ... 其他配置
+
+  // 路径解析配置
+  paths: {
+    projectDir: process.cwd(), // 项目根目录，默认为 cwd()
+    assetsDir: "resources", // 资源目录，默认为 "assets"
+  },
+
+  // 自动解析相对路径，默认为 true
+  resolveRelativePaths: true,
+});
+```
+
+> 📖 **详细文档：**[docs/path-resolution.md](docs/path-resolution.md) - 查看完整的路径解析指南，包括更多示例和最佳实践
+
+### 方式二：使用绝对路径
+
+如果您坚持使用绝对路径，可以禁用自动解析：
+
+```typescript
+import type { ForgeConfig } from "@electron-forge/shared-types";
+import MakerInnosetup from "electron-forge-maker-innosetup";
+
+const config: ForgeConfig = {
+  makers: [
+    new MakerInnosetup(
+      {
+        // 禁用相对路径解析
+        resolveRelativePaths: false,
+
+        // 使用绝对路径
+        setupIconFile: "E:\\workSpace\\my-app\\assets\\icon.ico",
+
+        config: {
+          Setup: {
+            SetupIconFile: "E:\\workSpace\\my-app\\assets\\icon.ico",
+          },
+          Files: [
+            {
+              Source: "E:\\workSpace\\my-app\\out\\*",
+              DestDir: "{app}",
+              Flags: "ignoreversion recursesubdirs",
+            },
+          ],
+        },
+      },
+      ["win32"]
+    ),
+  ],
+};
+
+export default config;
+```
+
+### 方式三：使用配置对象
 
 在 `forge.config.js` 中：
 
@@ -82,6 +187,7 @@ module.exports = {
       config: {
         appName: "MyApp",
         appPublisher: "My Company",
+        // 相对路径会自动解析
         setupIconFile: "./assets/icon.ico",
       },
     },
@@ -225,22 +331,22 @@ const forgeConfig: ForgeConfig = {
 
 ### MakerInnosetupConfig
 
-| 选项                    | 类型              | 默认值             | 说明                                    |
-| ----------------------- | ----------------- | ------------------ | --------------------------------------- |
-| `config`                | `InnoSetupConfig` | -                  | 完整的 Innosetup 配置对象               |
-| `scriptPath`            | `string`          | -                  | 自定义脚本路径（如果提供则忽略 config） |
-| `innosetupPath`         | `string`          | 自动查找           | Innosetup 编译器路径                    |
-| `outputDir`             | `string`          | `./out/installers` | 输出目录                                |
-| `appName`               | `string`          | -                  | 应用程序名称                            |
-| `appVersion`            | `string`          | -                  | 应用程序版本                            |
-| `appPublisher`          | `string`          | -                  | 应用程序发布者                          |
-| `appId`                 | `string`          | -                  | 应用程序唯一 ID                         |
-| `licenseFile`           | `string`          | -                  | 许可证文件路径                          |
-| `setupIconFile`         | `string`          | -                  | 安装图标文件路径                        |
-| `createDesktopIcon`     | `boolean`         | `false`            | 是否创建桌面图标                        |
-| `createQuickLaunchIcon` | `boolean`         | `false`            | 是否创建快速启动图标                    |
-| `gui`                   | `boolean`         | `false`            | 是否使用 GUI 模式编译                   |
-| `isccOptions`           | `string[]`        | -                  | 额外的 ISCC 命令行参数                  |
+| 选项                    | 类型              | 默认值                    | 说明                                    |
+| ----------------------- | ----------------- | ------------------------- | --------------------------------------- |
+| `config`                | `InnoSetupConfig` | -                         | 完整的 Innosetup 配置对象               |
+| `scriptPath`            | `string`          | -                         | 自定义脚本路径（如果提供则忽略 config） |
+| `innosetupPath`         | `string`          | 自动查找                  | Innosetup 编译器路径                    |
+| `outputDir`             | `string`          | `./out/innosetup.windows` | 输出目录                                |
+| `appName`               | `string`          | -                         | 应用程序名称                            |
+| `appVersion`            | `string`          | -                         | 应用程序版本                            |
+| `appPublisher`          | `string`          | -                         | 应用程序发布者                          |
+| `appId`                 | `string`          | -                         | 应用程序唯一 ID                         |
+| `licenseFile`           | `string`          | -                         | 许可证文件路径                          |
+| `setupIconFile`         | `string`          | -                         | 安装图标文件路径                        |
+| `createDesktopIcon`     | `boolean`         | `false`                   | 是否创建桌面图标                        |
+| `createQuickLaunchIcon` | `boolean`         | `false`                   | 是否创建快速启动图标                    |
+| `gui`                   | `boolean`         | `false`                   | 是否使用 GUI 模式编译                   |
+| `isccOptions`           | `string[]`        | -                         | 额外的 ISCC 命令行参数                  |
 
 ### InnoSetupConfig
 
@@ -264,8 +370,6 @@ const forgeConfig: ForgeConfig = {
 - `CustomMessages` - 自定义消息
 - `Code` - Pascal Script 代码
 
-所有配置项都有完整的 TypeScript 类型提示和文档。
-
 ## 高级用法
 
 ### 使用预处理器常量 (#define)
@@ -277,13 +381,13 @@ config: {
   config: {
     // 定义预处理器常量
     Defines: {
-      MyAppName: "Police Self Report",
+      MyAppName: "Self Report",
       MyAppVersion: "1.0.0",
-      MyAppPublisher: "合肥视尔信息科技有限公司",
-      MyAppExeName: "Police Self Report.exe",
-      MyAppAssocName: "Police Self Report File",
+      MyAppPublisher: "信息科技有限公司",
+      MyAppExeName: "Self Report.exe",
+      MyAppAssocName: "Self Report File",
       MyAppAssocExt: ".myp",
-      MyAppShortcutName: "公安自助接报案系统",
+      MyAppShortcutName: "XXXX系统",
     },
     Setup: {
       // 使用 {#ConstantName} 引用预处理器常量
@@ -319,10 +423,10 @@ config: {
 ; Script generated by the Inno Setup Script Wizard.
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
-#define MyAppName "Police Self Report"
+#define MyAppName "Self Report"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "合肥视尔信息科技有限公司"
-#define MyAppExeName "Police Self Report.exe"
+#define MyAppPublisher "信息科技有限公司"
+#define MyAppExeName "Self Report.exe"
 
 [Setup]
 AppName={#MyAppName}

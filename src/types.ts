@@ -674,10 +674,10 @@ export interface MakerInnosetupConfig {
   /** 应用程序 ID（如果未在 config 中指定） */
   appId?: string;
 
-  /** 许可证文件路径 */
+  /** 许可证文件路径（支持相对路径） */
   licenseFile?: string;
 
-  /** 安装图标文件路径 */
+  /** 安装图标文件路径（支持相对路径） */
   setupIconFile?: string;
 
   /** 是否创建桌面图标 */
@@ -688,4 +688,36 @@ export interface MakerInnosetupConfig {
 
   /** 编译超时时间（毫秒），默认 5 分钟 */
   compileTimeout?: number;
+
+  /**
+   * 路径解析配置
+   * 用于解析配置中的相对路径
+   */
+  paths?: {
+    /**
+     * 项目根目录，相对路径将基于此目录解析
+     * 默认为 Electron Forge 的 projectDir
+     */
+    projectDir?: string;
+
+    /**
+     * 资源文件目录（相对于 projectDir）
+     * 默认为 "assets"
+     * 用于快速引用图标、许可证等资源文件
+     */
+    assetsDir?: string;
+
+    /**
+     * 构建输出目录（相对于 projectDir）
+     * 默认为 Electron Forge 的打包输出目录
+     */
+    buildDir?: string;
+  };
+
+  /**
+   * 是否自动解析相对路径
+   * 默认为 true
+   * 设置为 false 时，所有路径将按原样使用（不推荐）
+   */
+  resolveRelativePaths?: boolean;
 }
